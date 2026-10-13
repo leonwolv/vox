@@ -1,0 +1,6 @@
+{
+  "name": "VoxA11y - Rust & Cross-Platform Accessibility TTS Engine",
+  "description": "Geavanceerde Tekst-naar-Spraak en OS Accessibility engine in Rust voor Windows, macOS en Linux met dynamische woordmarkering, dyslexie-modi, contextuele normalisatie en audio-export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

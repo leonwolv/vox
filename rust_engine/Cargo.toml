@@ -1,0 +1,52 @@
+[package]
+name = "vox_a11y"
+version = "0.1.0"
+edition = "2021"
+authors = ["VoxA11y Core Team <accessibility@voxa11y.org>"]
+description = "Cross-platform accessibility text-to-speech engine for Windows, macOS, and Linux with OS accessibility integration, Dutch/multilingual normalization, and word-by-word tracking."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Serialization & Config
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+regex = "1.10"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.11"
+clap = { version = "4.4", features = ["derive"] }
+
+# Audio Generation & Export
+hound = "3.5" # 16/24-bit PCM WAV encoding
+tokio = { version = "1.38", features = ["full"] }
+
+# Windows Target Dependencies (UI Automation & SAPI 5)
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_Ole",
+    "Win32_UI_Accessibility",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Media_Speech",
+] }
+
+# macOS Target Dependencies (ApplicationServices Accessibility & AVFoundation / AppKit)
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = "0.26"
+objc = "0.2"
+core-foundation = "0.9"
+
+# Linux Target Dependencies (AT-SPI2 via D-Bus & Speech Dispatcher)
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = "4.4"
+futures-util = "0.3"
+
+[lib]
+name = "vox_a11y"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vox_a11y_cli"
+path = "src/main.rs"

@@ -1,0 +1,48 @@
+[package]
+name = "vox_a11y_desktop"
+version = "0.1.0"
+description = "Native cross-platform desktop accessibility and text-to-speech app in Rust"
+authors = ["VoxA11y Desktop Team <desktop@voxa11y.org>"]
+edition = "2021"
+
+[lib]
+name = "vox_a11y_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2.0"
+tauri-plugin-dialog = "2.0"
+tauri-plugin-fs = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+regex = "1.10"
+hound = "3.5"
+log = "0.4"
+env_logger = "0.11"
+tokio = { version = "1.38", features = ["full"] }
+
+# Windows Native Accessibility & SAPI 5
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_Ole",
+    "Win32_UI_Accessibility",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Media_Speech",
+] }
+
+# macOS Native Accessibility & AVSpeechSynthesizer
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = "0.26"
+objc = "0.2"
+core-foundation = "0.9"
+
+# Linux Native AT-SPI2 D-Bus & Speech Dispatcher
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = "4.4"
+futures-util = "0.3"

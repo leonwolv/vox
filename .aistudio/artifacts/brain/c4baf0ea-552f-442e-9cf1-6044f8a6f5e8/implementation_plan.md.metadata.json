@@ -1,0 +1,6 @@
+{
+  "summary": "Geüpdatet implementatieplan voor het zwevende dock: de stemkeuze is gesplitst in 2 opeenvolgende dropdowns (1 voor de taal en 1 voor de stemmen binnen die taal) om lange scrollijsten te voorkomen. Daarnaast bevat het dock snelheidsregeling met +/- steppers en popover slider, plus de STT microfoonknop voor Whisper AI.",
+  "updatedAt": "2026-10-12T20:19:18.198200655Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

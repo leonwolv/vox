@@ -1,0 +1,38 @@
+name: Bouw Windows MSI & EXE Installer
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-tauri:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installeer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Installeer Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Installeer npm dependencies
+        run: npm ci
+
+      - name: Bouw Tauri Desktop App (.msi & .exe)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'VoxA11y Desktop v__VERSION__'
+          releaseBody: 'Officiële VoxA11y Windows Installer (.msi / .exe)'
+          releaseDraft: false
+          prerelease: true
