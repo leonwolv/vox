@@ -8,15 +8,16 @@ on:
 jobs:
   build-tauri:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Installeer Node.js
+      - name: Installeer Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
 
       - name: Installeer Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -24,15 +25,19 @@ jobs:
           targets: x86_64-pc-windows-msvc
 
       - name: Installeer npm dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
-      - name: Bouw Tauri Desktop App (.msi & .exe)
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compileer Frontend
+        run: npm run build
+
+      - name: Bouw Native Windows MSI en EXE
+        run: npx @tauri-apps/cli build
+
+      - name: Upload MSI en EXE Installers als Artifact
+        uses: actions/upload-artifact@v4
         with:
-          tagName: v__VERSION__
-          releaseName: 'VoxA11y Desktop v__VERSION__'
-          releaseBody: 'Officiële VoxA11y Windows Installer (.msi / .exe)'
-          releaseDraft: false
-          prerelease: true
+          name: VoxA11y-Windows-Installers
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: warn
