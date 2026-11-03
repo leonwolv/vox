@@ -22,16 +22,20 @@ if (-not (Get-Command rustc -ErrorAction SilentlyContinue)) {
 }
 
 # 3. Dependencies
-Write-Host "[1/3] Dependencies installeren..." -ForegroundColor Green
-npm install
+Write-Host "[1/4] Dependencies installeren..." -ForegroundColor Green
+npm install --legacy-peer-deps --include=optional
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[FOUT] npm install mislukt!" -ForegroundColor Red
     Read-Host "Druk op Enter"
     exit 1
 }
 
+# 3b. Windows Native Bindings (Tauri CLI, Rolldown, LightningCSS)
+Write-Host "[2/4] Zorg dat Windows native bindings (Tauri CLI, Rolldown, LightningCSS) aanwezig zijn..." -ForegroundColor Green
+npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
+
 # 4. Build frontend
-Write-Host "[2/3] Web frontend compileren..." -ForegroundColor Green
+Write-Host "[3/4] Web frontend compileren..." -ForegroundColor Green
 npm run build
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[FOUT] npm run build mislukt!" -ForegroundColor Red
@@ -40,7 +44,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 5. Build Tauri MSI & EXE
-Write-Host "[3/3] Native Windows MSI en EXE bouwen met Tauri 2.0..." -ForegroundColor Green
+Write-Host "[4/4] Native Windows MSI en EXE bouwen met Tauri 2.0..." -ForegroundColor Green
 npx @tauri-apps/cli build
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[FOUT] Tauri build mislukt!" -ForegroundColor Red

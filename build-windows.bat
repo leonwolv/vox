@@ -20,8 +20,8 @@ if errorlevel 1 goto :install_fallback
 
 :build_step
 echo.
-echo [2/4] Zorg dat Windows native bindings (Rolldown & LightningCSS) aanwezig zijn...
-call npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc >nul 2>nul
+echo [2/4] Zorg dat Windows native bindings (Tauri CLI, Rolldown & LightningCSS) aanwezig zijn...
+call npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc >nul 2>nul
 
 echo.
 echo [3/4] Web frontend compileren...

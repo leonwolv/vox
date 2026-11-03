@@ -27,7 +27,7 @@ jobs:
       - name: Installeer npm dependencies & Windows native bindings
         run: |
           npm install --legacy-peer-deps --include=optional
-          npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
+          npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
 
       - name: Compileer Frontend
         run: npm run build

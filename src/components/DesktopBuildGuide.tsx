@@ -327,6 +327,7 @@ export default function App() {
   "optionalDependencies": {
     "@rolldown/binding-win32-x64-msvc": "^1.2.13",
     "@tailwindcss/oxide-win32-x64-msvc": "^4.3.3",
+    "@tauri-apps/cli-win32-x64-msvc": "^2.1.0",
     "lightningcss-win32-x64-msvc": "^1.33.0"
   }
 }`,
@@ -403,8 +404,8 @@ if errorlevel 1 goto :install_fallback
 
 :build_step
 echo.
-echo [2/4] Zorg dat Windows native bindings (Rolldown & LightningCSS) aanwezig zijn...
-call npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc >nul 2>nul
+echo [2/4] Zorg dat Windows native bindings (Tauri CLI, Rolldown & LightningCSS) aanwezig zijn...
+call npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc >nul 2>nul
 
 echo.
 echo [3/4] Web frontend compileren...
@@ -506,8 +507,8 @@ if (-not (Get-Command rustc -ErrorAction SilentlyContinue)) {
 Write-Host "[1/4] Dependencies installeren..." -ForegroundColor Green
 npm install --legacy-peer-deps --include=optional
 
-Write-Host "[2/4] Zorg voor Windows native bindings (Rolldown & LightningCSS)..." -ForegroundColor Green
-npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
+Write-Host "[2/4] Zorg voor Windows native bindings (Tauri CLI, Rolldown & LightningCSS)..." -ForegroundColor Green
+npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
 
 Write-Host "[3/4] Web frontend compileren..." -ForegroundColor Green
 npm run build
@@ -566,7 +567,7 @@ jobs:
       - name: Installeer npm dependencies & Windows native bindings
         run: |
           npm install --legacy-peer-deps --include=optional
-          npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
+          npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
 
       - name: Compileer Frontend
         run: npm run build
@@ -911,13 +912,36 @@ jobs:
                   </div>
 
                   <div className="space-y-2 text-slate-300">
-                    {/* Fout 1: Rolldown Native Binding */}
-                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5">
-                      <p className="font-semibold text-rose-400 flex items-center gap-1">
-                        <span>1. "Cannot find native binding ... @rolldown/binding-win32-x64-msvc":</span>
+                    {/* Fout 1: Tauri CLI Native Binding */}
+                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5 border-l-4 border-l-rose-500">
+                      <p className="font-semibold text-rose-300 flex items-center gap-1">
+                        <span>1. "Cannot find module '@tauri-apps/cli-win32-x64-msvc'":</span>
                       </p>
                       <p className="text-slate-400 leading-relaxed">
-                        Vite gebruikt Rolldown, dat op Windows een native C++ binding vereist. Door een bekend npm-mechanisme (npm issue #4828) slaat npm optionele dependencies op Windows soms over.
+                        Tauri CLI gebruikt op Windows een native Rust executable wrapper (<code className="text-slate-200">@tauri-apps/cli-win32-x64-msvc</code>). Door een npm bug op Windows (npm issue #4828) slaat npm optionele native bindings over.
+                      </p>
+                      <div className="pt-1 space-y-1">
+                        <span className="text-emerald-300 font-medium">Alles-in-één commando (herstelt Tauri CLI + Rolldown + LightningCSS en bouwt direct MSI/EXE):</span>
+                        <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-emerald-400 flex items-center justify-between">
+                          <code className="text-[10px] break-all">npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc && npm run tauri build</code>
+                          <button
+                            onClick={() => copyToClipboard('npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc && npm run tauri build', 'fix-all-bindings')}
+                            className="text-slate-400 hover:text-white p-0.5 ml-2 shrink-0"
+                            title="Kopieer commando"
+                          >
+                            {copiedCmd === 'fix-all-bindings' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fout 2: Rolldown Native Binding */}
+                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5">
+                      <p className="font-semibold text-rose-400 flex items-center gap-1">
+                        <span>2. "Cannot find native binding ... @rolldown/binding-win32-x64-msvc":</span>
+                      </p>
+                      <p className="text-slate-400 leading-relaxed">
+                        Vite gebruikt Rolldown, dat op Windows een native C++ binding vereist.
                       </p>
                       <div className="pt-1 space-y-1">
                         <span className="text-emerald-300 font-medium">Oplossing: Installeer de Windows Rolldown binding handmatig:</span>

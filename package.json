@@ -40,6 +40,7 @@
   "optionalDependencies": {
     "@rolldown/binding-win32-x64-msvc": "^1.2.13",
     "@tailwindcss/oxide-win32-x64-msvc": "^4.3.3",
+    "@tauri-apps/cli-win32-x64-msvc": "^2.1.0",
     "lightningcss-win32-x64-msvc": "^1.33.0"
   }
 }
