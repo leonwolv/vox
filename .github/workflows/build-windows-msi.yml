@@ -26,8 +26,8 @@ jobs:
 
       - name: Installeer npm dependencies & Windows Rolldown binding
         run: |
-          npm install --include=optional
-          npm install --no-save @rolldown/binding-win32-x64-msvc
+          npm install --legacy-peer-deps --include=optional
+          npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc
 
       - name: Compileer Frontend
         run: npm run build

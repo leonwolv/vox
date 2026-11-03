@@ -15,13 +15,13 @@ where rustc >nul 2>nul
 if errorlevel 1 goto :no_rust
 
 echo [1/4] NPM packages installeren...
-call npm install --include=optional
+call npm install --legacy-peer-deps --include=optional
 if errorlevel 1 goto :install_fallback
 
 :build_step
 echo.
 echo [2/4] Zorg dat Windows Rolldown binding aanwezig is...
-call npm install --no-save @rolldown/binding-win32-x64-msvc >nul 2>nul
+call npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc >nul 2>nul
 
 echo.
 echo [3/4] Web frontend compileren...
