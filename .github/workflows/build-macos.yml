@@ -1,0 +1,46 @@
+name: Bouw macOS DMG & APP Installer
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: Bouw macOS (.dmg & .app Universal)
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installeer Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Installeer Rust toolchain met Universal macOS targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Installeer npm dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Compileer Frontend
+        run: npm run build
+
+      - name: Bouw Native macOS Universal DMG en APP
+        run: npx @tauri-apps/cli build --target universal-apple-darwin
+
+      - name: Upload macOS Installers als Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxA11y-macOS-Installers
+          path: |
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+            src-tauri/target/release/bundle/macos/*.app
+          if-no-files-found: warn

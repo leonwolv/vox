@@ -27,7 +27,7 @@ import { RUST_PROJECT_FILES } from './RustCodeViewer';
 export const DesktopBuildGuide: React.FC = () => {
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
   const [downloadingZip, setDownloadingZip] = useState(false);
-  const [selectedTarget, setSelectedTarget] = useState<'windows' | 'macos' | 'linux'>('windows');
+  const [selectedTarget, setSelectedTarget] = useState<'windows' | 'macos' | 'linux' | 'github-ci'>('windows');
   const [betaInstallTab, setBetaInstallTab] = useState<'pwa' | 'native' | 'dev'>('pwa');
 
   const copyToClipboard = (text: string, id: string) => {
@@ -589,6 +589,225 @@ jobs:
             src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: warn
 `,
+
+        '.github/workflows/build-linux.yml': `name: Bouw Linux DEB & AppImage Installer
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Bouw Linux (.deb & .AppImage)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installeer Linux Systeem Bibliotheken (GTK, WebKit, A11y, Audio)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \\
+            libwebkit2gtk-4.1-dev \\
+            build-essential \\
+            curl \\
+            wget \\
+            file \\
+            libxdo-dev \\
+            libssl-dev \\
+            libayatana-appindicator3-dev \\
+            librsvg2-dev \\
+            libspeechd-dev \\
+            libatspi2.0-dev
+
+      - name: Installeer Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Installeer Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Installeer npm dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Compileer Frontend
+        run: npm run build
+
+      - name: Bouw Native Linux DEB en AppImage
+        run: npx @tauri-apps/cli build
+
+      - name: Upload Linux Installers als Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxA11y-Linux-Installers
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: warn
+`,
+
+        '.github/workflows/build-macos.yml': `name: Bouw macOS DMG & APP Installer
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: Bouw macOS (.dmg & .app Universal)
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installeer Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Installeer Rust toolchain met Universal macOS targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Installeer npm dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Compileer Frontend
+        run: npm run build
+
+      - name: Bouw Native macOS Universal DMG en APP
+        run: npx @tauri-apps/cli build --target universal-apple-darwin
+
+      - name: Upload macOS Installers als Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxA11y-macOS-Installers
+          path: |
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+            src-tauri/target/release/bundle/macos/*.app
+          if-no-files-found: warn
+`,
+
+        '.github/workflows/build-all-platforms.yml': `name: Bouw Alle Desktop Installers (Windows, macOS, Linux)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-desktop:
+    name: Bouw \${{ matrix.platform.name }}
+    runs-on: \${{ matrix.platform.os }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: Windows (MSI & EXE)
+            os: windows-latest
+            artifact-name: VoxA11y-Windows-Installers
+            build-cmd: npx @tauri-apps/cli build
+            artifact-path: |
+              src-tauri/target/release/bundle/msi/*.msi
+              src-tauri/target/release/bundle/nsis/*.exe
+
+          - name: macOS (Universal DMG & APP)
+            os: macos-latest
+            artifact-name: VoxA11y-macOS-Installers
+            build-cmd: npx @tauri-apps/cli build --target universal-apple-darwin
+            artifact-path: |
+              src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+              src-tauri/target/release/bundle/dmg/*.dmg
+              src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+              src-tauri/target/release/bundle/macos/*.app
+
+          - name: Linux (DEB & AppImage)
+            os: ubuntu-22.04
+            artifact-name: VoxA11y-Linux-Installers
+            build-cmd: npx @tauri-apps/cli build
+            artifact-path: |
+              src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/appimage/*.AppImage
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: [Linux] Installeer Systeem Bibliotheken (GTK, WebKit, A11y, Audio)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \\
+            libwebkit2gtk-4.1-dev \\
+            build-essential \\
+            curl \\
+            wget \\
+            file \\
+            libxdo-dev \\
+            libssl-dev \\
+            libayatana-appindicator3-dev \\
+            librsvg2-dev \\
+            libspeechd-dev \\
+            libatspi2.0-dev
+
+      - name: Installeer Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Installeer Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: \${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || (runner.os == 'Windows' && 'x86_64-pc-windows-msvc' || 'x86_64-unknown-linux-gnu') }}
+
+      - name: [Windows] Installeer Windows Native Bindings
+        if: runner.os == 'Windows'
+        run: |
+          npm install --legacy-peer-deps --include=optional
+          npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
+
+      - name: [Non-Windows] Installeer npm dependencies
+        if: runner.os != 'Windows'
+        run: npm install --legacy-peer-deps
+
+      - name: Compileer Frontend
+        run: npm run build
+
+      - name: Bouw Native Desktop Installer
+        run: \${{ matrix.platform.build-cmd }}
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: \${{ matrix.platform.artifact-name }}
+          path: \${{ matrix.platform.artifact-path }}
+          if-no-files-found: warn
+`,
+
+        'src-tauri/entitlements.plist': `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+    <key>com.apple.security.audio-input</key>
+    <true/>
+</dict>
+</plist>`,
       };
 
       const zipBlob = await createRustProjectZip(fullDesktopFiles);
@@ -1179,6 +1398,15 @@ jobs:
             >
               Linux (.deb / .AppImage)
             </button>
+            <button
+              onClick={() => setSelectedTarget('github-ci')}
+              className={`px-3 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
+                selectedTarget === 'github-ci' ? 'bg-emerald-600 text-white font-medium' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Rocket className="w-3.5 h-3.5 text-emerald-300" />
+              <span>GitHub Actions (Cloud CI/CD)</span>
+            </button>
           </div>
         </div>
 
@@ -1283,9 +1511,147 @@ jobs:
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-amber-950/20 border border-amber-500/20 text-slate-300 leading-relaxed text-[11px]">
-              <strong className="text-amber-400">Resultaat op Linux: </strong>
-              Plaatst het standalone <code className="text-slate-200">VoxA11y_0.1.0_amd64.AppImage</code> en <code className="text-slate-200">.deb</code> bestand gereed voor distributie en desktop integration.
+            <div className="p-3 rounded-lg bg-amber-950/20 border border-amber-500/20 text-slate-300 leading-relaxed text-[11px] flex items-center justify-between">
+              <div>
+                <strong className="text-amber-400">Resultaat op Linux: </strong>
+                Plaatst het standalone <code className="text-slate-200">VoxA11y_0.1.0_amd64.AppImage</code> en <code className="text-slate-200">.deb</code> bestand gereed voor distributie en desktop integration.
+              </div>
+              <span className="text-[10px] bg-amber-900/40 text-amber-300 px-2 py-0.5 rounded border border-amber-700/50">
+                CI: .github/workflows/build-linux.yml
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* GitHub Actions CI/CD Cloud Workflows */}
+        {selectedTarget === 'github-ci' && (
+          <div className="space-y-4 text-xs">
+            <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-slate-300 leading-relaxed space-y-1">
+              <span className="font-semibold text-emerald-300 flex items-center gap-1.5">
+                <Rocket className="w-4 h-4 text-emerald-400" />
+                Automatische Cloud Compilatie voor Windows, macOS en Linux
+              </span>
+              <p className="text-slate-300 text-[11px]">
+                U hoeft geen Rust, C++ Build Tools of Linux-pakketten lokaal te installeren. GitHub bouwt de installers volledig automatisch op schone virtuele machines via GitHub Actions en levert kant-en-klare installatiebestanden op als downloadbare <strong>Artifacts</strong>.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Windows Workflow */}
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-blue-900/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-blue-400 flex items-center gap-1.5">
+                    <Laptop className="w-4 h-4 text-blue-400" />
+                    Windows (.msi / .exe)
+                  </span>
+                  <span className="text-[10px] bg-blue-950 text-blue-300 px-2 py-0.5 rounded border border-blue-800">
+                    windows-latest
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Bouwt met WiX Toolset de officiële Windows MSI met Startmenu-integratie en NSIS setup.exe.
+                </p>
+                <div className="pt-1 border-t border-slate-900 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                  <span>.github/workflows/build-windows-msi.yml</span>
+                  <button
+                    onClick={() => copyToClipboard('.github/workflows/build-windows-msi.yml', 'copy-win-wf')}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    {copiedCmd === 'copy-win-wf' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* macOS Workflow */}
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-purple-900/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-purple-400 flex items-center gap-1.5">
+                    <Laptop className="w-4 h-4 text-purple-400" />
+                    macOS (.dmg / .app)
+                  </span>
+                  <span className="text-[10px] bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-800">
+                    macos-latest
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Bouwt Universal binary voor Apple Silicon (M1/M2/M3/M4) én Intel Macs met A11y privacy entitlements.
+                </p>
+                <div className="pt-1 border-t border-slate-900 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                  <span>.github/workflows/build-macos.yml</span>
+                  <button
+                    onClick={() => copyToClipboard('.github/workflows/build-macos.yml', 'copy-mac-wf')}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    {copiedCmd === 'copy-mac-wf' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Linux Workflow */}
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-amber-900/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                    <Terminal className="w-4 h-4 text-amber-400" />
+                    Linux (.deb / .AppImage)
+                  </span>
+                  <span className="text-[10px] bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-800">
+                    ubuntu-22.04
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Installeert automatisch WebKitGTK, AT-SPI2 en Speech Dispatcher en exporteert .deb en standalone .AppImage.
+                </p>
+                <div className="pt-1 border-t border-slate-900 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                  <span>.github/workflows/build-linux.yml</span>
+                  <button
+                    onClick={() => copyToClipboard('.github/workflows/build-linux.yml', 'copy-linux-wf')}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    {copiedCmd === 'copy-linux-wf' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* All-in-One Multi-Platform Matrix Workflow */}
+            <div className="p-4 bg-slate-950 rounded-xl border border-emerald-900/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
+                    Alles-in-één Multi-Platform Matrix Workflow
+                  </h4>
+                  <p className="text-slate-400 text-[11px] mt-0.5">
+                    Bouwt Windows, macOS en Linux parallel in één run.
+                  </p>
+                </div>
+                <span className="font-mono text-[10px] text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-800">
+                  .github/workflows/build-all-platforms.yml
+                </span>
+              </div>
+
+              <div className="space-y-1.5 text-[11px] text-slate-300">
+                <span className="font-semibold text-slate-200">Hoe u de installers downloadt na de build:</span>
+                <ol className="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
+                  <li>Ga naar uw GitHub repository en klik op het tabblad <strong className="text-white">Actions</strong>.</li>
+                  <li>Kies links de workflow (bijv. <em>"Bouw Alle Desktop Installers"</em>) en klik rechts op <strong className="text-white">Run workflow</strong> (of push een commit).</li>
+                  <li>Klik na afronding op de voltooide run. Onderaan vindt u de sectie <strong className="text-emerald-400">Artifacts</strong> met de kant-en-klare installers:</li>
+                </ol>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono text-[10px]">
+                  <div className="bg-slate-900 p-2 rounded border border-slate-800 text-blue-300">
+                    📦 VoxA11y-Windows-Installers<br/>
+                    <span className="text-slate-500">.msi &amp; .exe</span>
+                  </div>
+                  <div className="bg-slate-900 p-2 rounded border border-slate-800 text-purple-300">
+                    📦 VoxA11y-macOS-Installers<br/>
+                    <span className="text-slate-500">Universal .dmg &amp; .app</span>
+                  </div>
+                  <div className="bg-slate-900 p-2 rounded border border-slate-800 text-amber-300">
+                    📦 VoxA11y-Linux-Installers<br/>
+                    <span className="text-slate-500">.deb &amp; .AppImage</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
