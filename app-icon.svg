@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#e0e7ff" stop-opacity="0.8"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded App Icon Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  
+  <!-- Sound Waves / Speech Symbol -->
+  <g transform="translate(64, 64)" fill="none" stroke="url(#wave)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Speaker / Sound icon body -->
+    <path d="M 96 140 L 140 140 L 220 70 L 220 314 L 140 244 L 96 244 Z" fill="#ffffff" fill-opacity="0.2"/>
+    <!-- Concentric audio waves -->
+    <path d="M 270 140 A 64 64 0 0 1 270 244"/>
+    <path d="M 314 104 A 112 112 0 0 1 314 280"/>
+    <path d="M 358 68 A 160 160 0 0 1 358 316"/>
+  </g>
+</svg>

@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Native cross-platform desktop accessibility and text-to-speech app in Rust"
 authors = ["VoxA11y Desktop Team <desktop@voxa11y.org>"]
 edition = "2021"
+build = "build.rs"
 
 [lib]
 name = "vox_a11y_desktop_lib"

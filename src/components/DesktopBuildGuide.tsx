@@ -48,6 +48,7 @@ version = "0.1.0"
 description = "Native cross-platform desktop accessibility and text-to-speech app in Rust"
 authors = ["VoxA11y Desktop Team <desktop@voxa11y.org>"]
 edition = "2021"
+build = "build.rs"
 
 [lib]
 name = "vox_a11y_desktop_lib"
@@ -85,6 +86,10 @@ core-foundation = "0.9"
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = "4.4"
 futures-util = "0.3"`,
+
+        'src-tauri/build.rs': `fn main() {
+    tauri_build::build()
+}`,
 
         'src-tauri/tauri.conf.json': `{
   "$schema": "https://schema.tauri.app/config/2",
@@ -912,10 +917,24 @@ jobs:
                   </div>
 
                   <div className="space-y-2 text-slate-300">
-                    {/* Fout 1: Tauri CLI Native Binding */}
+                    {/* Fout 1: OUT_DIR env var is not set (Missing build.rs) */}
+                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5 border-l-4 border-l-emerald-500">
+                      <p className="font-semibold text-emerald-300 flex items-center gap-1">
+                        <span>1. "OUT_DIR env var is not set, do you have a build script?" in src/lib.rs:</span>
+                      </p>
+                      <p className="text-slate-400 leading-relaxed">
+                        In Tauri 2 vereist de macro <code className="text-slate-200">tauri::generate_context!()</code> een Cargo build script (<code className="text-emerald-400">src-tauri/build.rs</code>). Zonder dit script kan Cargo de build context niet genereren en breekt de Rust compiler af. Dit bestand (<code className="text-slate-200">tauri_build::build()</code>) en alle native Windows iconen (<code className="text-slate-200">icon.ico</code>) zijn nu standaard toegevoegd.
+                      </p>
+                      <div className="p-2 bg-slate-900 rounded border border-slate-800 text-[10px] text-emerald-400 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+                        <span>Opgelost in de codebase! Na git push bouwt GitHub Actions de MSI direct zonder deze fout.</span>
+                      </div>
+                    </div>
+
+                    {/* Fout 2: Tauri CLI Native Binding */}
                     <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5 border-l-4 border-l-rose-500">
                       <p className="font-semibold text-rose-300 flex items-center gap-1">
-                        <span>1. "Cannot find module '@tauri-apps/cli-win32-x64-msvc'":</span>
+                        <span>2. "Cannot find module '@tauri-apps/cli-win32-x64-msvc'":</span>
                       </p>
                       <p className="text-slate-400 leading-relaxed">
                         Tauri CLI gebruikt op Windows een native Rust executable wrapper (<code className="text-slate-200">@tauri-apps/cli-win32-x64-msvc</code>). Door een npm bug op Windows (npm issue #4828) slaat npm optionele native bindings over.
