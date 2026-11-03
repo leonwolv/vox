@@ -325,7 +325,9 @@ export default function App() {
     "vite": "^8.3.0"
   },
   "optionalDependencies": {
-    "@rolldown/binding-win32-x64-msvc": "^1.2.13"
+    "@rolldown/binding-win32-x64-msvc": "^1.2.13",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.3.3",
+    "lightningcss-win32-x64-msvc": "^1.33.0"
   }
 }`,
 
@@ -401,8 +403,8 @@ if errorlevel 1 goto :install_fallback
 
 :build_step
 echo.
-echo [2/4] Zorg dat Windows Rolldown binding aanwezig is...
-call npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc >nul 2>nul
+echo [2/4] Zorg dat Windows native bindings (Rolldown & LightningCSS) aanwezig zijn...
+call npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc >nul 2>nul
 
 echo.
 echo [3/4] Web frontend compileren...
@@ -504,8 +506,8 @@ if (-not (Get-Command rustc -ErrorAction SilentlyContinue)) {
 Write-Host "[1/4] Dependencies installeren..." -ForegroundColor Green
 npm install --legacy-peer-deps --include=optional
 
-Write-Host "[2/4] Zorg voor Windows Rolldown binding..." -ForegroundColor Green
-npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc
+Write-Host "[2/4] Zorg voor Windows native bindings (Rolldown & LightningCSS)..." -ForegroundColor Green
+npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
 
 Write-Host "[3/4] Web frontend compileren..." -ForegroundColor Green
 npm run build
@@ -561,10 +563,10 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Installeer npm dependencies & Windows Rolldown binding
+      - name: Installeer npm dependencies & Windows native bindings
         run: |
           npm install --legacy-peer-deps --include=optional
-          npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc
+          npm install --legacy-peer-deps --no-save @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
 
       - name: Compileer Frontend
         run: npm run build
@@ -999,6 +1001,28 @@ jobs:
                             className="text-slate-400 hover:text-white p-0.5"
                           >
                             {copiedCmd === 'fix-eresolve' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fout 6: LightningCSS / Tailwind v4 native module ontbreekt */}
+                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5">
+                      <p className="font-semibold text-rose-400 flex items-center gap-1">
+                        <span>6. "Cannot find module '../lightningcss.win32-x64-msvc.node'":</span>
+                      </p>
+                      <p className="text-slate-400 leading-relaxed">
+                        Tailwind CSS v4 gebruikt LightningCSS voor supersnelle stijlen. Op Windows heeft LightningCSS de native C++ module <code className="text-slate-200 bg-slate-800 px-1 rounded">lightningcss-win32-x64-msvc</code> nodig.
+                      </p>
+                      <div className="pt-1 space-y-1">
+                        <span className="text-emerald-300 font-medium">Directe oplossing via terminal:</span>
+                        <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-emerald-400 flex items-center justify-between">
+                          <code>npm install --legacy-peer-deps --no-save lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc && npm run tauri build</code>
+                          <button
+                            onClick={() => copyToClipboard('npm install --legacy-peer-deps --no-save lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc && npm run tauri build', 'fix-lightningcss')}
+                            className="text-slate-400 hover:text-white p-0.5"
+                          >
+                            {copiedCmd === 'fix-lightningcss' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                           </button>
                         </div>
                       </div>
