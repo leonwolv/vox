@@ -323,6 +323,9 @@ export default function App() {
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.0"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "^1.2.13"
   }
 }`,
 
@@ -377,67 +380,48 @@ export default function App() {
 `,
 
         'build-windows.bat': `@echo off
-setlocal enabledelayedexpansion
+title VoxA11y Desktop - MSI en EXE Bouwer
 
 echo ============================================================
 echo   VoxA11y Desktop - Automatische Windows MSI/EXE Bouwer
 echo ============================================================
 echo.
 
-REM 1. Controleer of Node.js aanwezig is
+:: 1. Controleer of Node.js aanwezig is
 where node >nul 2>nul
-if errorlevel 1 (
-    echo [FOUT] Node.js is niet gevonden!
-    echo Installeer Node.js 18+ via https://nodejs.org en start dit script opnieuw.
-    pause
-    exit /b 1
-)
+if errorlevel 1 goto :no_node
 
-REM 2. Controleer of Rust compiler aanwezig is
+:: 2. Controleer of Rust compiler aanwezig is
 where rustc >nul 2>nul
-if errorlevel 1 (
-    echo [LET OP] Rust compiler (rustc) is nog niet geinstalleerd.
-    echo Rust is vereist om de native desktop engine te compileren.
-    echo Download en installeer Rust via https://rustup.rs (kies standaard optie 1).
-    echo.
-    echo Druk op een toets om https://rustup.rs te openen in uw browser...
-    pause
-    start https://rustup.rs
-    exit /b 1
-)
+if errorlevel 1 goto :no_rust
 
-echo [1/3] Dependencies installeren...
-call npm install
-if errorlevel 1 (
-    echo [FOUT] npm install is mislukt!
-    pause
-    exit /b 1
-)
+echo [1/4] NPM packages installeren...
+call npm install --include=optional
+if errorlevel 1 goto :install_fallback
+
+:build_step
+echo.
+echo [2/4] Zorg dat Windows Rolldown binding aanwezig is...
+call npm install --no-save @rolldown/binding-win32-x64-msvc >nul 2>nul
 
 echo.
-echo [2/3] Web frontend compileren...
+echo [3/4] Web frontend compileren...
 call npm run build
-if errorlevel 1 (
-    echo [FOUT] Frontend build mislukt!
-    pause
-    exit /b 1
-)
+if errorlevel 1 goto :build_err
 
 echo.
-echo [3/3] Native Windows MSI en EXE bouwen met Tauri 2.0...
+echo [4/4] Native Windows MSI en EXE bouwen met Tauri 2.0...
 call npx @tauri-apps/cli build
-if errorlevel 1 (
-    echo [FOUT] Tauri build mislukt. Controleer de foutmelding hierboven.
-    pause
-    exit /b 1
-)
+if errorlevel 1 goto :tauri_err
 
 echo.
 echo ============================================================
 echo   SUCCES! De Windows MSI installer is succesvol gebouwd!
 echo ============================================================
-echo Locatie van de installer:
-echo src-tauri\\target\\release\\bundle\\msi\\
+echo.
+echo Locatie van de installers:
+echo - MSI: src-tauri\\target\\release\\bundle\\msi\\
+echo - EXE: src-tauri\\target\\release\\bundle\\nsis\\
 echo.
 if exist "src-tauri\\target\\release\\bundle\\msi" (
     explorer "src-tauri\\target\\release\\bundle\\msi"
@@ -445,6 +429,55 @@ if exist "src-tauri\\target\\release\\bundle\\msi" (
     explorer "src-tauri\\target\\release\\bundle"
 )
 pause
+exit /b 0
+
+:install_fallback
+echo [LET OP] Standaard npm install gaf waarschuwing, herpoging met legacy peer deps...
+call npm install --legacy-peer-deps --include=optional
+if errorlevel 1 goto :npm_err
+goto :build_step
+
+:no_node
+echo.
+echo [FOUT] Node.js is niet gevonden!
+echo Installeer Node.js via https://nodejs.org en start dit script opnieuw.
+echo.
+pause
+exit /b 1
+
+:no_rust
+echo.
+echo [LET OP] Rust compiler rustc is nog niet geinstalleerd.
+echo Rust is vereist om de native Windows desktop installer te compileren.
+echo Download en installeer Rust via https://rustup.rs - kies standaard optie 1.
+echo.
+echo Druk op een toets om https://rustup.rs te openen in uw browser...
+pause
+start https://rustup.rs
+exit /b 1
+
+:npm_err
+echo.
+echo [FOUT] npm install is mislukt.
+echo Probeer de map node_modules te verwijderen en start dit script opnieuw.
+echo.
+pause
+exit /b 1
+
+:build_err
+echo.
+echo [FOUT] Frontend build mislukt.
+echo.
+pause
+exit /b 1
+
+:tauri_err
+echo.
+echo [FOUT] Tauri build mislukt.
+echo Controleer of de C++ Build Tools geinstalleerd zijn via Visual Studio Installer.
+echo.
+pause
+exit /b 1
 `,
 
         'build-windows.ps1': `Write-Host "============================================================" -ForegroundColor Cyan
@@ -468,15 +501,16 @@ if (-not (Get-Command rustc -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-Write-Host "[1/3] Dependencies installeren..." -ForegroundColor Green
-npm install
+Write-Host "[1/4] Dependencies installeren..." -ForegroundColor Green
+npm install --include=optional
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[FOUT] npm install mislukt!" -ForegroundColor Red
-    Read-Host "Druk op Enter"
-    exit 1
+    npm install --legacy-peer-deps --include=optional
 }
 
-Write-Host "[2/3] Web frontend compileren..." -ForegroundColor Green
+Write-Host "[2/4] Zorg voor Windows Rolldown binding..." -ForegroundColor Green
+npm install --no-save @rolldown/binding-win32-x64-msvc
+
+Write-Host "[3/4] Web frontend compileren..." -ForegroundColor Green
 npm run build
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[FOUT] npm run build mislukt!" -ForegroundColor Red
@@ -484,7 +518,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "[3/3] Native Windows MSI en EXE bouwen met Tauri 2.0..." -ForegroundColor Green
+Write-Host "[4/4] Native Windows MSI en EXE bouwen met Tauri 2.0..." -ForegroundColor Green
 npx @tauri-apps/cli build
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[FOUT] Tauri build mislukt!" -ForegroundColor Red
@@ -530,8 +564,10 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Installeer npm dependencies
-        run: npm install --legacy-peer-deps
+      - name: Installeer npm dependencies & Windows Rolldown binding
+        run: |
+          npm install --include=optional
+          npm install --no-save @rolldown/binding-win32-x64-msvc
 
       - name: Compileer Frontend
         run: npm run build
@@ -872,19 +908,61 @@ jobs:
                 <div className="bg-rose-950/20 border border-rose-500/30 rounded-xl p-3.5 space-y-3 text-[11px]">
                   <div className="flex items-center gap-2 text-rose-300 font-semibold text-xs">
                     <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                    <span>Foutdiagnose &amp; Oplossingen voor "Cannot resolve entry module index.html":</span>
+                    <span>Foutdiagnose &amp; Directe Oplossingen voor Bouwfouten op Windows:</span>
                   </div>
 
                   <div className="space-y-2 text-slate-300">
+                    {/* Fout 1: Rolldown Native Binding */}
                     <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5">
-                      <p className="font-semibold text-amber-300 flex items-center gap-1">
-                        <span>1. Oorzaak van [UNRESOLVED_ENTRY] index.html:</span>
+                      <p className="font-semibold text-rose-400 flex items-center gap-1">
+                        <span>1. "Cannot find native binding ... @rolldown/binding-win32-x64-msvc":</span>
                       </p>
                       <p className="text-slate-400 leading-relaxed">
-                        Tauri voert automatisch <code className="text-white bg-slate-800 px-1 rounded">npm run build</code> uit vóór het bouwen van de executable. Vite zoekt <code className="text-white bg-slate-800 px-1 rounded">index.html</code> in de huidige werkmap. Als u het commando uitvoert in een submap (zoals <code className="text-slate-200 bg-slate-800 px-1 rounded">vox_a11y_rust_engine</code>), of als <code className="text-slate-200 bg-slate-800 px-1 rounded">index.html</code> ontbreekt, mislukt de build met exit code 1.
+                        Vite gebruikt Rolldown, dat op Windows een native C++ binding vereist. Door een bekend npm-mechanisme (npm issue #4828) slaat npm optionele dependencies op Windows soms over.
                       </p>
                       <div className="pt-1 space-y-1">
-                        <span className="text-slate-300 font-medium">Oplossing A: Ga 1 map omhoog naar de hoofdmap en bouw opnieuw:</span>
+                        <span className="text-emerald-300 font-medium">Oplossing: Installeer de Windows Rolldown binding handmatig:</span>
+                        <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-emerald-400 flex items-center justify-between">
+                          <code>npm install --no-save @rolldown/binding-win32-x64-msvc && npm run tauri build</code>
+                          <button
+                            onClick={() => copyToClipboard('npm install --no-save @rolldown/binding-win32-x64-msvc && npm run tauri build', 'fix-rolldown')}
+                            className="text-slate-400 hover:text-white p-0.5"
+                          >
+                            {copiedCmd === 'fix-rolldown' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fout 2: Batch script 'is was unexpected at this time' */}
+                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5">
+                      <p className="font-semibold text-amber-300 flex items-center gap-1">
+                        <span>2. "is was unexpected at this time" in build-windows.bat:</span>
+                      </p>
+                      <p className="text-slate-400 leading-relaxed">
+                        In oudere versies van het batch-bestand interpreteerde cmd.exe haakjes <code className="text-slate-200 bg-slate-800 px-1 rounded">(rustc)</code> als het einde van het blok. Dit is nu volledig gecorrigeerd met robuuste labels. U kunt ook direct bouwen via PowerShell:
+                      </p>
+                      <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-emerald-400 flex items-center justify-between">
+                        <code>npx @tauri-apps/cli build</code>
+                        <button
+                          onClick={() => copyToClipboard('npx @tauri-apps/cli build', 'fix-bat-npx')}
+                          className="text-slate-400 hover:text-white p-0.5"
+                        >
+                          {copiedCmd === 'fix-bat-npx' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Fout 3: UNRESOLVED_ENTRY index.html */}
+                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5">
+                      <p className="font-semibold text-amber-300 flex items-center gap-1">
+                        <span>3. "[UNRESOLVED_ENTRY] Cannot resolve entry module index.html":</span>
+                      </p>
+                      <p className="text-slate-400 leading-relaxed">
+                        Tauri voert <code className="text-white bg-slate-800 px-1 rounded">npm run build</code> uit in de huidige map. Als u het commando uitvoerde in de submap <code className="text-slate-200 bg-slate-800 px-1 rounded">vox_a11y_rust_engine</code>, ontbrak het HTML entrypoint.
+                      </p>
+                      <div className="pt-1 space-y-1">
+                        <span className="text-slate-300 font-medium">Oplossing: Ga 1 map omhoog naar de hoofdmap en bouw opnieuw:</span>
                         <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-emerald-400 flex items-center justify-between">
                           <code>cd .. && npm run tauri build</code>
                           <button
@@ -895,30 +973,16 @@ jobs:
                           </button>
                         </div>
                       </div>
-                      <div className="pt-1 space-y-1">
-                        <span className="text-slate-300 font-medium">Oplossing B: Download het vernieuwde ZIP-bestand bovenaan:</span>
-                        <p className="text-slate-400">
-                          De downloadknop <strong className="text-indigo-300">"Download Complete Desktop Project (.ZIP)"</strong> bevat nu gegarandeerd <code className="text-slate-200">index.html</code>, <code className="text-slate-200">vite.config.ts</code>, <code className="text-slate-200">src/main.tsx</code> en een voorgebouwde <code className="text-slate-200">dist/</code> map, zodat <code className="text-emerald-400">npm run build</code> direct zonder fouten slaagt.
-                        </p>
-                      </div>
                     </div>
 
+                    {/* Fout 4: Missing script: tauri */}
                     <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5">
                       <p className="font-semibold text-amber-300 flex items-center gap-1">
-                        <span>2. Oplossing voor "npm error Missing script: tauri":</span>
+                        <span>4. "npm error Missing script: tauri":</span>
                       </p>
                       <p className="text-slate-400 leading-relaxed">
-                        Als <code className="text-slate-200">package.json</code> nog geen <code className="text-slate-200">"tauri": "tauri"</code> regel bevat, roep de Tauri compiler dan direct aan via npx:
+                        Als <code className="text-slate-200">package.json</code> nog geen script <code className="text-slate-200">"tauri": "tauri"</code> heeft, roept u de compiler rechtstreeks aan met <code className="text-white bg-slate-800 px-1 rounded">npx @tauri-apps/cli build</code>.
                       </p>
-                      <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-indigo-300 flex items-center justify-between">
-                        <code>npx @tauri-apps/cli build</code>
-                        <button
-                          onClick={() => copyToClipboard('npx @tauri-apps/cli build', 'npx-tauri-build')}
-                          className="text-slate-400 hover:text-white p-0.5"
-                        >
-                          {copiedCmd === 'npx-tauri-build' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>

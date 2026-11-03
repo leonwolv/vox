@@ -24,8 +24,10 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Installeer npm dependencies
-        run: npm install --legacy-peer-deps
+      - name: Installeer npm dependencies & Windows Rolldown binding
+        run: |
+          npm install --include=optional
+          npm install --no-save @rolldown/binding-win32-x64-msvc
 
       - name: Compileer Frontend
         run: npm run build
