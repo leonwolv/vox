@@ -5,9 +5,10 @@
 **High-Performance Native Accessibility & Text-to-Speech Engine**  
 *Built with Rust 2021, Tauri 2.0, and React 19*
 
-[![Release](https://img.shields.io/github/v/release/vox/vox?include_prereleases&style=for-the-badge&color=6366f1)](https://github.com/vox/vox/releases)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/vox/vox/build-all-platforms.yml?branch=main&style=for-the-badge&label=Build%20Status)](https://github.com/vox/vox/actions)
-[![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20macOS%20%7C%20Linux-emerald?style=for-the-badge)](https://github.com/vox/vox/releases)
+[![Release](https://img.shields.io/github/v/release/leonwolv/vox?include_prereleases&style=for-the-badge&color=6366f1)](https://github.com/leonwolv/vox/releases)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/leonwolv/vox/build-all-platforms.yml?branch=main&style=for-the-badge&label=Build%20Status)](https://github.com/leonwolv/vox/actions)
+[![Stars](https://img.shields.io/github/stars/leonwolv/vox?style=for-the-badge&color=eab308)](https://github.com/leonwolv/vox)
+[![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20macOS%20%7C%20Linux-emerald?style=for-the-badge)](https://github.com/leonwolv/vox/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-v2.0-24c8db?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app)
 [![Rust](https://img.shields.io/badge/Rust-2021%20Edition-dea584?style=for-the-badge&logo=rust&logoColor=white)](https://rust-lang.org)
 [![WCAG](https://img.shields.io/badge/Accessibility-WCAG%202.2%20AAA-blueviolet?style=for-the-badge)](https://www.w3.org/WAI/standards-guidelines/wcag/)
@@ -39,7 +40,7 @@ Unlike browser-only extensions, VoxA11y runs as a persistent native background d
 
 ## 📦 Quick Download & Releases
 
-Pre-compiled, cryptographically verified installers for Windows, macOS, and Linux are automatically built and published on the [**GitHub Releases Page**](https://github.com/vox/vox/releases).
+Pre-compiled, cryptographically verified installers for Windows, macOS, and Linux are automatically built and published on the [**GitHub Releases Page**](https://github.com/leonwolv/vox/releases).
 
 | Platform | Format | Architecture | Notes |
 | :--- | :--- | :--- | :--- |
@@ -96,7 +97,7 @@ Pre-compiled, cryptographically verified installers for Windows, macOS, and Linu
 
 ```bash
 # Clone the repository
-git clone https://github.com/vox/vox.git
+git clone https://github.com/leonwolv/vox.git
 cd vox
 ```
 
