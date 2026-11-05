@@ -797,7 +797,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: [Linux] Installeer Systeem Bibliotheken (GTK, WebKit, A11y, Audio)
+      - name: Installeer Linux Systeem Bibliotheken (GTK, WebKit, A11y, Audio)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -824,13 +824,13 @@ jobs:
         with:
           targets: \${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || (runner.os == 'Windows' && 'x86_64-pc-windows-msvc' || 'x86_64-unknown-linux-gnu') }}
 
-      - name: [Windows] Installeer Windows Native Bindings
+      - name: Installeer Windows Native Bindings
         if: runner.os == 'Windows'
         run: |
           npm install --legacy-peer-deps --include=optional
           npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
 
-      - name: [Non-Windows] Installeer npm dependencies
+      - name: Installeer npm dependencies (macOS & Linux)
         if: runner.os != 'Windows'
         run: npm install --legacy-peer-deps
 
@@ -900,7 +900,7 @@ jobs:
       - name: Checkout broncode
         uses: actions/checkout@v4
 
-      - name: [Linux] Installeer Systeem Bibliotheken (GTK, WebKit, A11y, Audio)
+      - name: Installeer Linux Systeem Bibliotheken (GTK, WebKit, A11y, Audio)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -927,13 +927,13 @@ jobs:
         with:
           targets: \${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || (runner.os == 'Windows' && 'x86_64-pc-windows-msvc' || 'x86_64-unknown-linux-gnu') }}
 
-      - name: [Windows] Installeer Windows Native Bindings
+      - name: Installeer Windows Native Bindings
         if: runner.os == 'Windows'
         run: |
           npm install --legacy-peer-deps --include=optional
           npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
 
-      - name: [Non-Windows] Installeer npm dependencies
+      - name: Installeer npm dependencies (macOS & Linux)
         if: runner.os != 'Windows'
         run: npm install --legacy-peer-deps
 
