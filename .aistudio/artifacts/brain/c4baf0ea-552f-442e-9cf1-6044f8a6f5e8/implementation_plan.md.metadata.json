@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for creating an automated multi-platform GitHub Release pipeline (triggered on git tags like v*) and a professional open-source README.md in English for VoxA11y Desktop.",
-  "updatedAt": "2026-11-05T19:55:33.813012882Z",
+  "summary": "Implementation plan for an automated CHANGELOG.md generator integrated into the GitHub Actions release workflow, formatting commits by Conventional Commits categories (Features, Bug Fixes, Improvements) and prepending new releases while preserving history.",
+  "updatedAt": "2026-11-05T20:09:44.872791424Z",
   "requestFeedback": true,
   "userFacing": true
 }

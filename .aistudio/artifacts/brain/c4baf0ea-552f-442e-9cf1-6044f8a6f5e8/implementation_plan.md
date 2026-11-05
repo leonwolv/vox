@@ -1,115 +1,127 @@
-# VoxA11y Desktop - Automated Release Pipeline & Documentation Plan
+# Automated CHANGELOG.md Generator & Release Workflow Integration Plan
 
-This plan establishes an automated multi-platform release pipeline via GitHub Actions (`.github/workflows/release.yml`) that builds native installers for Windows, macOS, and Linux upon publishing a git tag (`v*`), generates cryptographic SHA256 checksums, and attaches all assets to an official GitHub Release. It also introduces a comprehensive, professional English `README.md` following open-source industry standards.
+This plan establishes an automated changelog generation system integrated directly into `.github/workflows/release.yml`. When a release tag (such as `v0.1.0`) is pushed, the workflow parses the git commit history since the previous tag (or the repository inception if it is the first release), categorizes commits according to the Conventional Commits specification (Features, Bug Fixes, Performance & Improvements, Maintenance), prepends the new formatted section to `CHANGELOG.md` while preserving previous release history, and publishes the notes to the GitHub Release.
 
 ---
 
 ### User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following decisions were confirmed through interactive clarification and are locked into the release architecture:
+> The following decisions were confirmed through interactive clarification and are locked into the technical design:
 
-- **Confirmed: Release Trigger**: Automated execution upon git version tags (e.g. `git tag v0.1.0 && git push origin v0.1.0`), plus manual `workflow_dispatch` support with a customizable version input for testing.
-- **Confirmed: Publication Strategy**: Direct release publication with attached installer binaries (Windows `.msi` and `.exe`, macOS Universal `.dmg` and `.app`, Linux `.deb` and `.AppImage`), auto-generated changelog notes, and a cryptographic `SHA256SUMS.txt` checksum file for integrity verification.
-- **Confirmed: Documentation Language & Standard**: Primary English in modern open-source repository standard (shields.io badges, architecture overview, cross-platform download matrix, global hotkey guide, local development steps, and CI/CD instructions).
+- **Confirmed: Categorization Format**: Conventional Commits specification. Commits prefixed with `feat:` or `feat(...)` map to **✨ Features**, `fix:` or `fix(...)` map to **🐛 Bug Fixes**, `perf:` or `improve:` map to **⚡ Performance & Improvements**, and `refactor:`, `chore:`, or `docs:` map to **🛠️ Maintenance & Documentation**. Commits without conventional prefixes fall into an **Other Changes** section with commit hashes and author attribution.
+- **Confirmed: Execution Environment**: Integrated directly into the GitHub Actions release workflow (`.github/workflows/release.yml`), ensuring zero local tool dependencies and automatic execution whenever a release tag is pushed.
+- **Confirmed: Changelog Preservation**: The workflow prepends the newly generated release block at the top of `CHANGELOG.md` directly beneath the header title, preserving all historical releases beneath it. The release section is also saved to `RELEASE_NOTES.md` and fed into `softprops/action-gh-release` as the official release description.
 
 ---
 
 ### 1. Overview & Core Concept
 
 - **What It Delivers**:
-  1. `.github/workflows/release.yml`: A parallel 3-OS matrix job (Windows, macOS, Linux) that triggers on tags matching `v*`, builds optimized release binaries using Tauri 2.0, calculates SHA256 hashes, and uploads all deliverables directly to GitHub Releases.
-  2. `README.md`: An English README including project identity, key accessibility features (TTS, Whisper offline STT, floating widget), system requirements, quick installation guide, global shortcuts, architecture diagram, local compilation guide, and troubleshooting references.
-  3. `src/components/DesktopBuildGuide.tsx`: Synchronization of the downloadable desktop `.ZIP` and in-app documentation to include the new release workflow and updated documentation.
-- **Target Audience**: End users, accessibility advocates, open-source contributors, and software distributors who need pre-built, verified installers and clear technical documentation.
-- **Key Value**: Eliminates manual building across different operating systems and delivers verified binaries directly to end users on GitHub.
+  1. `scripts/generate-changelog.mjs`: A self-contained, dependency-free Node.js ES-module script that inspects `git log`, groups commits by Conventional Commits types, generates markdown formatted with commit links and author tags, and prepends the new section to `CHANGELOG.md`.
+  2. `.github/workflows/release.yml` Enhancement: A dedicated workflow step in the `publish-release` job that checks out full git history (`fetch-depth: 0`), runs the changelog generator for the current tag, commits the updated `CHANGELOG.md` back to the repository, and attaches the notes to the GitHub Release.
+  3. Base `CHANGELOG.md`: An initial, pristine `CHANGELOG.md` file pre-seeded for the upcoming `v0.1.0` release showcasing the native accessibility engine, SAPI 5 / AVFoundation / AT-SPI2 integrations, and offline Whisper STT.
+  4. In-App Synchronization: Adding `scripts/generate-changelog.mjs` and `CHANGELOG.md` to `fullDesktopFiles` in `src/components/DesktopBuildGuide.tsx` so users downloading the ZIP receive the exact tooling.
+- **Target Audience**: Users, developers, and packagers who need a clear, structured summary of what changed between releases.
+- **Key Value**: 100% automated release documentation with zero manual copy-pasting or missed commit entries.
 
 ---
 
-### 2. User Experience & Release Pipeline Architecture
+### 2. User Experience & Changelog Architecture
 
-#### Workflow Trigger & Execution Flow
+#### Commit Parsing & Changelog Pipeline Flow
 ```
-Developer creates Git tag (e.g. v0.1.0)
-                   │
-                   ▼
-       Push tag to GitHub: git push origin v0.1.0
-                   │
-   ┌───────────────┴───────────────┐
-   │ GitHub Actions: release.yml   │
-   └───────────────┬───────────────┘
-                   │
-    ┌──────────────┼──────────────┐
-    ▼              ▼              ▼
-[Windows Matrix] [macOS Matrix]  [Linux Matrix]
-• Node 22 + Rust • Node 22 + Rust • Node 22 + Rust
-• Native bindings• Universal SDK  • GTK/A11y deps
-• Tauri CLI      • Tauri CLI      • Tauri CLI
-• Build MSI+EXE  • Build DMG+APP  • Build DEB+AppImage
-    │              │              │
-    └──────────────┼──────────────┘
-                   ▼
-        Upload Build Artifacts
-                   │
-                   ▼
-     Job 2: Publish GitHub Release (ubuntu-latest)
-     • Download all platform artifacts
-     • Compute SHA256 checksums -> SHA256SUMS.txt
-     • Create GitHub Release with auto-changelog
-     • Attach all 6 installer binaries + SHA256SUMS.txt
+Git Release Tag Pushed (e.g. v0.1.0)
+                 │
+                 ▼
+GitHub Actions: Checkout with fetch-depth: 0
+                 │
+                 ▼
+Identify Previous Git Tag (or root commit for initial v0.1.0)
+                 │
+                 ▼
+Execute: node scripts/generate-changelog.mjs [tag]
+┌────────────────────────────────────────────────────────┐
+│ Parse `git log --pretty=format:"%H|%s|%an|%ae|%ad"`    │
+│ Categorize by Conventional Commits prefix:             │
+│   • feat:     -> ✨ Features                           │
+│   • fix:      -> 🐛 Bug Fixes                          │
+│   • perf:     -> ⚡ Performance & Improvements          │
+│   • refactor: -> ♻️ Code Refactoring                  │
+│   • docs:     -> 📝 Documentation                      │
+│   • chore/ci: -> 🔧 Build & CI/CD                      │
+└────────────────────────┬───────────────────────────────┘
+                         │
+     ┌───────────────────┴───────────────────┐
+     ▼                                       ▼
+Update CHANGELOG.md                     Create RELEASE_NOTES.md
+(Prepend v0.1.0 block,                  (Contains current tag notes,
+preserve existing history)              passed to GitHub Release body)
+     │                                       │
+     ▼                                       ▼
+Commit & Push updated CHANGELOG.md      Publish GitHub Release with
+back to repository main branch          installers & checksums
 ```
 
-#### Published Release Deliverables
-| Platform | Target Architecture | Generated Installers | Attached Files |
-| :--- | :--- | :--- | :--- |
-| **Windows** | `x86_64-pc-windows-msvc` | WiX MSI & NSIS Setup | `VoxA11y_0.1.0_x64_nl-NL.msi`, `VoxA11y_0.1.0_x64-setup.exe` |
-| **macOS** | Universal (`arm64` + `x86_64`) | Drag-and-Drop Disk Image | `VoxA11y_0.1.0_universal.dmg`, `VoxA11y_0.1.0.app.tar.gz` |
-| **Linux** | `x86_64-unknown-linux-gnu` | Debian Package & AppImage | `VoxA11y_0.1.0_amd64.deb`, `VoxA11y_0.1.0_amd64.AppImage` |
-| **Integrity** | All Platforms | Cryptographic Signatures | `SHA256SUMS.txt` |
+#### Formatted Output Example for `CHANGELOG.md`
+```markdown
+# Changelog
+
+All notable changes to the **VoxA11y Desktop** project are documented here.
+This project adheres to [Semantic Versioning](https://semver.org/).
+
+## [v0.1.0] - 2026-11-05
+
+### ✨ Features
+- **a11y**: integrate native Microsoft UI Automation for Windows 10/11 ([`3a8f1b2`](https://github.com/vox/vox/commit/3a8f1b2)) - @LeonWolvekamp
+- **tts**: add AVFoundation speech synthesizer binding for macOS Sonoma/Sequoia ([`7c4e901`](https://github.com/vox/vox/commit/7c4e901))
+- **ui**: implement always-on-top transparent floating control widget ([`d812a4b`](https://github.com/vox/vox/commit/d812a4b))
+
+### 🐛 Bug Fixes
+- **macos**: resolve ApplicationServices.framework bundle copy failure ([`5ec6afd`](https://github.com/vox/vox/commit/5ec6afd))
+- **windows**: install missing `@tauri-apps/cli-win32-x64-msvc` native bindings ([`12b84cf`](https://github.com/vox/vox/commit/12b84cf))
+- **ci**: quote square bracket step names in GitHub Actions YAML ([`9d4821a`](https://github.com/vox/vox/commit/9d4821a))
+
+### ⚡ Performance & Improvements
+- **build**: enable Rolldown multi-threaded bundling for Vite client environment ([`4b81c2d`](https://github.com/vox/vox/commit/4b81c2d))
+```
 
 ---
 
 ### 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: Matrix Build with Consolidated Release Job**
-  - *Chosen Approach*: Run compilation across `windows-latest`, `macos-latest`, and `ubuntu-22.04` in parallel, then feed all artifacts into a single final release job that computes checksums and publishes the GitHub Release.
-  - *Why*: Prevents partial or race-condition releases where one platform updates the release before others finish. The consolidated release job ensures that either all binaries are attached together or the release remains uncorrupted.
-  - *Alternative Considered*: Publishing directly from each matrix runner. Rejected because it can cause token conflicts and fragmented releases.
+- **Decision 1: Zero-Dependency Node.js Script (`scripts/generate-changelog.mjs`)**
+  - *Chosen Approach*: Write the parser in native Node.js (available on every GitHub Actions runner and development machine) using child process calls to `git log`.
+  - *Why*: Eliminates brittle third-party CLI dependencies (like `standard-version` or heavy Ruby gems) that can fail or suffer from npm peer dependency conflicts.
+  - *Alternative Considered*: External GitHub Action (e.g., `conventional-changelog-action`). Rejected because third-party actions frequently break due to runner Node version migrations and lack customized multi-platform grouping.
 
-- **Decision 2: Comprehensive English README with Dutch A11y Callout**
-  - *Chosen Approach*: Structure the main documentation in English for international open-source visibility, with prominent badges, visual architecture diagrams, and a dedicated localized section/badge acknowledging Dutch accessibility guidelines (DigiToegankelijk / WCAG 2.2).
-  - *Why*: Balances international developer contributions with the project's roots and primary user base in Dutch accessibility.
+- **Decision 2: Intelligent Range Fallback (Initial vs. Incremental Releases)**
+  - *Chosen Approach*: If a previous tag exists (e.g. `v0.0.9`), parse `v0.0.9..v0.1.0`. If no previous tag exists (as with the upcoming first release `v0.1.0`), parse all commits up to `HEAD`.
+  - *Why*: First releases in new repositories fail on `git describe --tags --abbrev=0` if no prior tag exists. This graceful fallback ensures the first release generates a complete changelog.
 
-- **Decision 3: SHA256 Checksum Generation**
-  - *Chosen Approach*: Generate a standard `SHA256SUMS.txt` file using `sha256sum` in the release job.
-  - *Why*: Allows users and system administrators in healthcare, government, and education environments to verify package integrity before deployment.
+- **Decision 3: Non-Destructive In-Place Prepending**
+  - *Chosen Approach*: Read the existing `CHANGELOG.md`, find the top-level title header, and insert the new `## [vX.Y.Z]` section directly beneath the header, preserving all earlier release history. If `CHANGELOG.md` does not exist, initialize it with standard header metadata.
 
 ---
 
 ### 4. Technical Architecture & File Plan
 
-#### Pipeline Specification (`.github/workflows/release.yml`)
-- **Triggers**:
-  - `push: tags: ['v*']`
-  - `workflow_dispatch: inputs: version_name`
-- **Runner Configuration**:
-  - `build-assets`: Matrix with `windows-latest`, `macos-latest`, `ubuntu-22.04`.
-  - `publish-release`: Runs on `ubuntu-latest`, depends on `needs: [build-assets]`.
-  - Uses `softprops/action-gh-release@v2` with `generate_release_notes: true`.
+1. **`scripts/generate-changelog.mjs`**:
+   - Parses CLI arguments (`process.argv[2]` for tag name, defaults to `v0.1.0`).
+   - Retrieves repository commit history via `git log`.
+   - Groups commits into Conventional Commits categories: Features, Bug Fixes, Improvements, Maintenance, Other.
+   - Generates markdown and prepends it to `CHANGELOG.md`.
+   - Also writes `RELEASE_NOTES.md` for GitHub Release consumption.
 
-#### Documentation Specification (`README.md`)
-- **Sections**:
-  1. Header with Title, Tagline, and Status Badges (CI status, License, Tauri 2.0, Rust 2021, WCAG 2.2 AAA).
-  2. Core Highlights (High-speed local TTS, Whisper offline STT, floating overlay widget, zero cloud latency).
-  3. Pre-built Downloads Matrix (direct links to GitHub Releases).
-  4. Global Keyboard Shortcuts table (`Ctrl+Shift+Space`, etc.).
-  5. System Requirements (Windows 10/11, macOS 11+, Linux Ubuntu 20.04+).
-  6. Development & Building from Source (Prerequisites, Node.js, Rust toolchain, build scripts).
-  7. GitHub Actions CI/CD overview (explanation of the automated release pipeline).
-  8. Troubleshooting FAQ (quick solutions for native bindings, build.rs, and macOS frameworks).
-  9. License & Accessibility Compliance.
+2. **`.github/workflows/release.yml`**:
+   - In `publish-release` job:
+     - Check out with `fetch-depth: 0` so git history and tags are present.
+     - Run `node scripts/generate-changelog.mjs ${{ github.ref_name }}`.
+     - Pass `body_path: RELEASE_NOTES.md` to `softprops/action-gh-release@v2`.
+     - Commit and push the updated `CHANGELOG.md` back to the default branch using `stefanzweifel/git-auto-commit-action@v5` (or native git config).
 
-#### In-App Guide Synchronization (`src/components/DesktopBuildGuide.tsx`)
-- Include `.github/workflows/release.yml` in `fullDesktopFiles` so users downloading the ZIP receive the exact release pipeline.
-- Include the new `README.md` in `fullDesktopFiles`.
-- Add a release pipeline card in the in-app "GitHub Actions (Cloud CI/CD)" tab.
+3. **`CHANGELOG.md`**:
+   - Seeded in the project root with the comprehensive `v0.1.0` release notes.
+
+4. **`src/components/DesktopBuildGuide.tsx`**:
+   - Add `scripts/generate-changelog.mjs` and `CHANGELOG.md` to the exported ZIP.

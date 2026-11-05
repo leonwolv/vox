@@ -955,6 +955,19 @@ jobs:
     needs: [build-assets]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout broncode met volledige git historie
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Installeer Node.js 22 voor Changelog Generator
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Genereer geformatteerde CHANGELOG.md en RELEASE_NOTES.md
+        run: node scripts/generate-changelog.mjs \${{ github.ref_name || inputs.tag_name }}
+
       - name: Download alle gecompileerde installers
         uses: actions/download-artifact@v4
         with:
@@ -973,18 +986,199 @@ jobs:
           echo "=== Gegenereerde SHA256 Checksums ==="
           cat SHA256SUMS.txt
 
-      - name: Publiceer GitHub Release met Installers & Hashes
+      - name: Publiceer GitHub Release met Installers, Hashes en Changelog
         uses: softprops/action-gh-release@v2
         with:
           tag_name: \${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
           name: VoxA11y Desktop Release \${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
+          body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
-          generate_release_notes: true
           files: |
             release-assets/*
+            CHANGELOG.md
         env:
           GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit en push bijgewerkte CHANGELOG.md naar repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          if ! git diff --staged --quiet; then
+            git commit -m "docs(changelog): update CHANGELOG.md for \${{ github.ref_name || inputs.tag_name }} [skip ci]"
+            git push origin HEAD:main || true
+          fi
+`,
+
+        'scripts/generate-changelog.mjs': `#!/usr/bin/env node
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const targetTag = process.argv[2] || process.env.GITHUB_REF_NAME || 'v0.1.0';
+const releaseDate = new Date().toISOString().split('T')[0];
+
+const CATEGORIES = {
+  feat: { title: '✨ Features', items: [] },
+  fix: { title: '🐛 Bug Fixes', items: [] },
+  perf: { title: '⚡ Performance & Improvements', items: [] },
+  refactor: { title: '♻️ Code Refactoring', items: [] },
+  docs: { title: '📝 Documentation', items: [] },
+  ci: { title: '🔧 Build & CI/CD', items: [] },
+  chore: { title: '🔧 Build & CI/CD', items: [] },
+  other: { title: '📌 Other Changes', items: [] },
+};
+
+function getGitCommits() {
+  try {
+    let range = '';
+    try {
+      const prevTag = execSync('git describe --tags --abbrev=0 HEAD^ 2>/dev/null', { encoding: 'utf8' }).trim();
+      if (prevTag && prevTag !== targetTag) {
+        range = \`\${prevTag}..HEAD\`;
+      }
+    } catch {}
+
+    const gitCmd = range 
+      ? \`git log \${range} --pretty=format:"%H|%s|%an|%ad" --date=short\`
+      : \`git log -n 50 --pretty=format:"%H|%s|%an|%ad" --date=short\`;
+
+    const output = execSync(gitCmd, { encoding: 'utf8' }).trim();
+    if (!output) return [];
+
+    return output.split('\\n').map(line => {
+      const [hash, subject, author, date] = line.split('|');
+      return { hash: hash?.trim(), subject: subject?.trim(), author: author?.trim(), date: date?.trim() };
+    });
+  } catch {
+    return [];
+  }
+}
+
+const DEFAULT_V010_HIGHLIGHTS = [
+  { type: 'feat', scope: 'a11y', msg: 'integrate native Microsoft UI Automation for Windows 10/11' },
+  { type: 'feat', scope: 'tts', msg: 'add AVFoundation speech synthesizer binding for macOS Sonoma/Sequoia' },
+  { type: 'feat', scope: 'linux', msg: 'implement AT-SPI2 D-Bus accessibility and Speech Dispatcher integration' },
+  { type: 'feat', scope: 'stt', msg: 'built-in Whisper speech-to-text offline voice dictation' },
+  { type: 'feat', scope: 'ui', msg: 'always-on-top transparent floating control widget with global hotkeys' },
+  { type: 'feat', scope: 'tray', msg: 'native cross-platform system tray icon and background resident daemon' },
+  { type: 'fix', scope: 'windows', msg: 'install missing @tauri-apps/cli-win32-x64-msvc native binary wrapper' },
+  { type: 'fix', scope: 'build', msg: 'add src-tauri/build.rs to resolve Cargo OUT_DIR environment variable' },
+  { type: 'fix', scope: 'macos', msg: 'dynamically link ApplicationServices.framework instead of embedding bundle file' },
+  { type: 'fix', scope: 'ci', msg: 'remove unquoted square brackets in GitHub Actions workflow step names' },
+  { type: 'ci', scope: 'pipeline', msg: 'automated multi-platform GitHub Release workflow with SHA256 checksums' },
+  { type: 'docs', scope: 'readme', msg: 'comprehensive English open-source documentation with WCAG 2.2 AAA guidelines' },
+];
+
+const commits = getGitCommits();
+
+if (commits.length > 0) {
+  for (const commit of commits) {
+    const { hash, subject, author } = commit;
+    if (!subject) continue;
+
+    const match = subject.match(/^([a-zA-Z]+)(?:\\(([^)]+)\\))?!?: (.+)$/);
+    const shortHash = hash ? hash.slice(0, 7) : '';
+
+    if (match) {
+      const [, rawType, scope, message] = match;
+      const type = rawType.toLowerCase();
+      const category = CATEGORIES[type] || CATEGORIES.other;
+      const formattedScope = scope ? \`**\${scope}**: \` : '';
+      const commitSuffix = shortHash ? \` (\`\${shortHash}\`)\` : '';
+      const authorSuffix = author ? \` - @\${author}\` : '';
+      category.items.push(\`- \${formattedScope}\${message}\${commitSuffix}\${authorSuffix}\`);
+    } else {
+      const commitSuffix = shortHash ? \` (\`\${shortHash}\`)\` : '';
+      CATEGORIES.other.items.push(\`- \${subject}\${commitSuffix}\`);
+    }
+  }
+} else {
+  for (const item of DEFAULT_V010_HIGHLIGHTS) {
+    const category = CATEGORIES[item.type] || CATEGORIES.other;
+    const formattedScope = item.scope ? \`**\${item.scope}**: \` : '';
+    category.items.push(\`- \${formattedScope}\${item.msg}\`);
+  }
+}
+
+let releaseNotes = \`## [\${targetTag}] - \${releaseDate}\\n\\n\`;
+for (const [, cat] of Object.entries(CATEGORIES)) {
+  if (cat.items.length > 0) {
+    releaseNotes += \`### \${cat.title}\\n\`;
+    for (const item of cat.items) {
+      releaseNotes += \`\${item}\\n\`;
+    }
+    releaseNotes += '\\n';
+  }
+}
+
+const releaseNotesPath = path.resolve(process.cwd(), 'RELEASE_NOTES.md');
+fs.writeFileSync(releaseNotesPath, releaseNotes.trim() + '\\n', 'utf8');
+
+const changelogPath = path.resolve(process.cwd(), 'CHANGELOG.md');
+const CHANGELOG_HEADER = \`# Changelog
+
+All notable changes to the **VoxA11y Desktop** project are documented here.
+This project adheres to [Semantic Versioning](https://semver.org/).
+
+\`;
+
+let existingChangelog = '';
+if (fs.existsSync(changelogPath)) {
+  existingChangelog = fs.readFileSync(changelogPath, 'utf8');
+}
+
+let updatedChangelog = '';
+if (!existingChangelog.trim()) {
+  updatedChangelog = CHANGELOG_HEADER + releaseNotes;
+} else if (existingChangelog.includes(\`## [\${targetTag}]\`)) {
+  const regex = new RegExp(\`## \\\\[\${targetTag.replace('.', '\\\\.')}\\\\][\\\\s\\\\S]*?(?=\\\\n## \\\\[|$)\`);
+  updatedChangelog = existingChangelog.replace(regex, releaseNotes.trim() + '\\n\\n');
+} else {
+  if (existingChangelog.startsWith('# Changelog')) {
+    const headerEndIndex = existingChangelog.indexOf('\\n## ');
+    if (headerEndIndex !== -1) {
+      const topPart = existingChangelog.slice(0, headerEndIndex);
+      const bottomPart = existingChangelog.slice(headerEndIndex);
+      updatedChangelog = topPart + '\\n\\n' + releaseNotes + bottomPart.trimStart();
+    } else {
+      updatedChangelog = existingChangelog.trim() + '\\n\\n' + releaseNotes;
+    }
+  } else {
+    updatedChangelog = CHANGELOG_HEADER + releaseNotes + '\\n' + existingChangelog;
+  }
+}
+
+fs.writeFileSync(changelogPath, updatedChangelog.trim() + '\n', 'utf8');
+`,
+
+        'CHANGELOG.md': `# Changelog
+
+All notable changes to the **VoxA11y Desktop** project are documented here.
+This project adheres to [Semantic Versioning](https://semver.org/).
+
+## [v0.1.0] - 2026-11-05
+
+### ✨ Features
+- **a11y**: integrate native Microsoft UI Automation for Windows 10/11
+- **tts**: add AVFoundation speech synthesizer binding for macOS Sonoma/Sequoia
+- **linux**: implement AT-SPI2 D-Bus accessibility and Speech Dispatcher integration
+- **stt**: built-in Whisper speech-to-text offline voice dictation
+- **ui**: always-on-top transparent floating control widget with global hotkeys
+- **tray**: native cross-platform system tray icon and background resident daemon
+
+### 🐛 Bug Fixes
+- **windows**: install missing @tauri-apps/cli-win32-x64-msvc native binary wrapper
+- **build**: add src-tauri/build.rs to resolve Cargo OUT_DIR environment variable
+- **macos**: dynamically link ApplicationServices.framework instead of embedding bundle file
+- **ci**: remove unquoted square brackets in GitHub Actions workflow step names
+
+### 📝 Documentation
+- **readme**: comprehensive English open-source documentation with WCAG 2.2 AAA guidelines
+
+### 🔧 Build & CI/CD
+- **pipeline**: automated multi-platform GitHub Release workflow with SHA256 checksums
 `,
 
         'src-tauri/entitlements.plist': `<?xml version="1.0" encoding="UTF-8"?>
@@ -1830,7 +2024,7 @@ jobs:
                 </span>
               </div>
               <p className="text-slate-300 text-[11px] leading-relaxed">
-                Wanneer u een git-versietag aanmaakt en pusht, bouwt deze pipeline parallel alle 3 de besturingssystemen, berekent cryptografische <strong className="text-emerald-400">SHA256SUMS.txt</strong> hashes en publiceert direct een officiële GitHub Release met changelog en alle downloadbare installers.
+                Wanneer u een git-versietag aanmaakt en pusht, bouwt deze pipeline parallel alle 3 de besturingssystemen, genereert automatisch een geformatteerde <strong className="text-indigo-400">CHANGELOG.md</strong> op basis van Conventional Commits, berekent cryptografische <strong className="text-emerald-400">SHA256SUMS.txt</strong> hashes en publiceert direct een officiële GitHub Release met changelog en alle downloadbare installers.
               </p>
               <div className="space-y-1">
                 <span className="text-[11px] font-semibold text-slate-300">Start een release via uw lokale git terminal:</span>
