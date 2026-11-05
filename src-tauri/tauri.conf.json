@@ -62,7 +62,6 @@
       }
     },
     "macOS": {
-      "frameworks": ["ApplicationServices.framework", "AVFoundation.framework"],
       "minimumSystemVersion": "11.0",
       "entitlements": "entitlements.plist"
     },

@@ -88,6 +88,11 @@ zbus = "4.4"
 futures-util = "0.3"`,
 
         'src-tauri/build.rs': `fn main() {
+    #[cfg(target_os = "macos")]
+    {
+        println!("cargo:rustc-link-lib=framework=ApplicationServices");
+        println!("cargo:rustc-link-lib=framework=AVFoundation");
+    }
     tauri_build::build()
 }`,
 
@@ -126,6 +131,37 @@ futures-util = "0.3"`,
     "trayIcon": {
       "iconPath": "icons/icon.png",
       "tooltip": "VoxA11y Desktop (Ctrl+Shift+Space to Play/Pause)"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "wix": {
+        "language": "nl-NL"
+      },
+      "nsis": {
+        "languages": ["Dutch", "English"]
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "entitlements": "entitlements.plist"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libspeechd-dev", "libatspi2.0-0"]
+      },
+      "appimage": {
+        "bundleMediaFramework": true
+      }
     }
   }
 }`,
@@ -337,54 +373,68 @@ export default function App() {
   }
 }`,
 
-        'README.md': `# VoxA11y Native Desktop Application (Rust & Tauri 2.0)
+        'README.md': `# VoxA11y Desktop - Native Accessibility & Text-to-Speech Engine
+Built with Rust 2021, Tauri 2.0, and React 19.
 
-## Quick Start
-1. Installeer dependencies (inclusief Tauri CLI):
-   \`\`\`bash
-   npm install
-   \`\`\`
+## Quick Download & Releases
+Pre-compiled native installers for Windows, macOS, and Linux are automatically built and published via GitHub Actions on the GitHub Releases page:
+- **Windows**: \`.msi\` (Enterprise WiX installer) and \`.exe\` (NSIS standalone setup)
+- **macOS**: \`.dmg\` (Universal Disk Image for Apple Silicon & Intel)
+- **Linux**: \`.deb\` (Debian/Ubuntu package) and \`.AppImage\` (Standalone portable executable)
 
-2. Start Desktop in Ontwikkelmodus:
-   \`\`\`bash
-   npm run tauri dev
-   # Of direct via npx:
-   npx @tauri-apps/cli dev
-   \`\`\`
+Every release includes an official \`SHA256SUMS.txt\` checksum file for verification.
 
-3. Bouw de installer voor uw besturingssysteem:
-   - **Windows (.exe / .msi)**:
-     \`\`\`bash
-     npm run tauri build
-     \`\`\`
-     *(Of: \`npx @tauri-apps/cli build\`)*
-   - **macOS (.app / .dmg)**:
-     \`\`\`bash
-     npm run tauri build -- --target universal-apple-darwin
-     \`\`\`
-   - **Linux (.deb / .AppImage)**:
-     \`\`\`bash
-     npm run tauri build -- --target x86_64-unknown-linux-gnu
-     \`\`\`
+## Core Features
+- **Global Hotkey**: Press **Ctrl+Shift+Space** (or **Cmd+Shift+Space** on macOS) from any program (Word, Chrome, Acrobat) to immediately read highlighted text.
+- **Always-on-Top Floating Widget**: Compact overlay control widget that stays visible over your active work.
+- **Offline Whisper Voice Dictation**: 100% privacy-friendly speech-to-text dictation without cloud dependence.
+- **Zero Cloud Latency**: Local text-to-speech engine utilizing native operating system accessibility and synthesis APIs (SAPI 5 / OneCore on Windows, AVFoundation on macOS, Speech Dispatcher on Linux).
 
-## Veelvoorkomende Foutmeldingen & Oplossingen:
+## Keyboard Shortcuts
+- **Ctrl+Shift+Space** (Cmd+Shift+Space): Play / Pause reading selected text
+- **Ctrl+Shift+O** (Cmd+Shift+O): Toggle Floating Widget (Show / Hide)
+- **Ctrl+Shift+S** (Cmd+Shift+S): Stop playback
+- **Ctrl + / -**: Increase / Decrease speech rate
+- **Esc**: Dismiss floating speech bubble
 
-### 1. Fout: "[UNRESOLVED_ENTRY] Cannot resolve entry module index.html"
-- **Oorzaak**: Vite zoekt \`index.html\` in de huidige map. Als u het commando uitvoert in een submap (zoals \`vox_a11y_rust_engine\`), kan Vite het entrypoint niet vinden.
-- **Oplossing**:
-  Ga naar de hoofdmap waar \`index.html\` en \`package.json\` staan:
-  \`\`\`bash
-  cd ..
-  npm run tauri build
-  \`\`\`
+## Building from Source
 
-### 2. Fout: "npm error Missing script: tauri"
-- **Oorzaak**: \`"tauri": "tauri"\` ontbrak in de \`scripts\` sectie van \`package.json\`.
-- **Oplossing**:
-  Gebruik de npx-versie:
-  \`\`\`bash
-  npx @tauri-apps/cli build
-  \`\`\`
+### Prerequisites
+- Node.js 20 or 22 LTS (https://nodejs.org)
+- Rust stable toolchain (https://rustup.rs)
+
+### Windows Build
+\`\`\`powershell
+npm install --legacy-peer-deps --include=optional
+npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
+npm run build
+npx @tauri-apps/cli build
+\`\`\`
+*(Or simply double-click \`build-windows.bat\`)*
+
+### macOS Build
+\`\`\`bash
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+npm install --legacy-peer-deps
+npm run build
+npx @tauri-apps/cli build --target universal-apple-darwin
+\`\`\`
+
+### Linux Build
+\`\`\`bash
+sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libspeechd-dev libatspi2.0-dev
+npm install --legacy-peer-deps
+npm run build
+npx @tauri-apps/cli build
+\`\`\`
+
+## Automated GitHub Actions Release
+To create an official multi-platform release with installers and SHA256 checksums:
+\`\`\`bash
+git tag v0.1.0
+git push origin v0.1.0
+\`\`\`
+The GitHub Actions workflow \`.github/workflows/release.yml\` will compile all platforms in parallel and publish the release automatically.
 `,
 
         'build-windows.bat': `@echo off
@@ -798,6 +848,145 @@ jobs:
           if-no-files-found: warn
 `,
 
+        '.github/workflows/release.yml': `name: Officiële GitHub Release (Windows, macOS, Linux)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Versietag (bijv. v0.1.0)'
+        required: false
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-assets:
+    name: Compileer \${{ matrix.platform.name }}
+    runs-on: \${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: Windows (MSI & EXE)
+            os: windows-latest
+            artifact-dir: windows-binaries
+            build-cmd: npx @tauri-apps/cli build
+            artifact-path: |
+              src-tauri/target/release/bundle/msi/*.msi
+              src-tauri/target/release/bundle/nsis/*.exe
+
+          - name: macOS (Universal DMG & APP)
+            os: macos-latest
+            artifact-dir: macos-binaries
+            build-cmd: npx @tauri-apps/cli build --target universal-apple-darwin
+            artifact-path: |
+              src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+              src-tauri/target/release/bundle/dmg/*.dmg
+
+          - name: Linux (DEB & AppImage)
+            os: ubuntu-22.04
+            artifact-dir: linux-binaries
+            build-cmd: npx @tauri-apps/cli build
+            artifact-path: |
+              src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/appimage/*.AppImage
+
+    steps:
+      - name: Checkout broncode
+        uses: actions/checkout@v4
+
+      - name: [Linux] Installeer Systeem Bibliotheken (GTK, WebKit, A11y, Audio)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \\
+            libwebkit2gtk-4.1-dev \\
+            build-essential \\
+            curl \\
+            wget \\
+            file \\
+            libxdo-dev \\
+            libssl-dev \\
+            libayatana-appindicator3-dev \\
+            librsvg2-dev \\
+            libspeechd-dev \\
+            libatspi2.0-dev
+
+      - name: Installeer Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Installeer Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: \${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || (runner.os == 'Windows' && 'x86_64-pc-windows-msvc' || 'x86_64-unknown-linux-gnu') }}
+
+      - name: [Windows] Installeer Windows Native Bindings
+        if: runner.os == 'Windows'
+        run: |
+          npm install --legacy-peer-deps --include=optional
+          npm install --legacy-peer-deps --no-save @tauri-apps/cli-win32-x64-msvc @rolldown/binding-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
+
+      - name: [Non-Windows] Installeer npm dependencies
+        if: runner.os != 'Windows'
+        run: npm install --legacy-peer-deps
+
+      - name: Compileer Web Frontend
+        run: npm run build
+
+      - name: Bouw Native Desktop Release
+        run: \${{ matrix.platform.build-cmd }}
+
+      - name: Upload Matrix Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: \${{ matrix.platform.artifact-dir }}
+          path: \${{ matrix.platform.artifact-path }}
+          if-no-files-found: error
+
+  publish-release:
+    name: Publiceer Officiële GitHub Release
+    needs: [build-assets]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download alle gecompileerde installers
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Toon verzamelde installers
+        run: |
+          echo "=== Verzamelde release bestanden ==="
+          ls -la release-assets
+
+      - name: Bereken SHA256 Hashes voor Verificatie
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          echo "=== Gegenereerde SHA256 Checksums ==="
+          cat SHA256SUMS.txt
+
+      - name: Publiceer GitHub Release met Installers & Hashes
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: \${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
+          name: VoxA11y Desktop Release \${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            release-assets/*
+        env:
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+`,
+
         'src-tauri/entitlements.plist': `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -1132,14 +1321,28 @@ jobs:
                 <div className="bg-rose-950/20 border border-rose-500/30 rounded-xl p-3.5 space-y-3 text-[11px]">
                   <div className="flex items-center gap-2 text-rose-300 font-semibold text-xs">
                     <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                    <span>Foutdiagnose &amp; Directe Oplossingen voor Bouwfouten op Windows:</span>
+                    <span>Foutdiagnose &amp; Directe Oplossingen voor Bouwfouten (Windows &amp; macOS):</span>
                   </div>
 
                   <div className="space-y-2 text-slate-300">
-                    {/* Fout 1: OUT_DIR env var is not set (Missing build.rs) */}
+                    {/* Fout 1: macOS ApplicationServices.framework No such file or directory */}
+                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5 border-l-4 border-l-purple-500">
+                      <p className="font-semibold text-purple-300 flex items-center gap-1">
+                        <span>1. "IO error for operation on ApplicationServices.framework: No such file or directory" (macOS):</span>
+                      </p>
+                      <p className="text-slate-400 leading-relaxed">
+                        In Tauri 2 dient <code className="text-slate-200">bundle.macOS.frameworks</code> in <code className="text-slate-200">tauri.conf.json</code> uitsluitend voor het kopiëren van externe, private .framework bestanden naar <code className="text-slate-200">Contents/Frameworks</code>. Standaard macOS systeemframeworks (zoals <code className="text-slate-200">ApplicationServices</code> en <code className="text-slate-200">AVFoundation</code>) zijn reeds onderdeel van macOS en mogen niet in die array staan.
+                      </p>
+                      <div className="p-2 bg-slate-900 rounded border border-slate-800 text-[10px] text-purple-300 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+                        <span>Opgelost in de codebase! De frameworks worden nu netjes via <code className="text-slate-200">src-tauri/build.rs</code> gelinkt en <code className="text-slate-200">tauri.conf.json</code> probeert ze niet meer lokaal te kopiëren.</span>
+                      </div>
+                    </div>
+
+                    {/* Fout 2: OUT_DIR env var is not set (Missing build.rs) */}
                     <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 space-y-1.5 border-l-4 border-l-emerald-500">
                       <p className="font-semibold text-emerald-300 flex items-center gap-1">
-                        <span>1. "OUT_DIR env var is not set, do you have a build script?" in src/lib.rs:</span>
+                        <span>2. "OUT_DIR env var is not set, do you have a build script?" in src/lib.rs:</span>
                       </p>
                       <p className="text-slate-400 leading-relaxed">
                         In Tauri 2 vereist de macro <code className="text-slate-200">tauri::generate_context!()</code> een Cargo build script (<code className="text-emerald-400">src-tauri/build.rs</code>). Zonder dit script kan Cargo de build context niet genereren en breekt de Rust compiler af. Dit bestand (<code className="text-slate-200">tauri_build::build()</code>) en alle native Windows iconen (<code className="text-slate-200">icon.ico</code>) zijn nu standaard toegevoegd.
@@ -1608,6 +1811,37 @@ jobs:
                     className="text-slate-400 hover:text-white"
                   >
                     {copiedCmd === 'copy-linux-wf' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Official GitHub Release Pipeline Card */}
+            <div className="p-4 bg-gradient-to-r from-indigo-950/40 via-purple-950/30 to-slate-950 rounded-xl border border-indigo-500/40 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Rocket className="w-4 h-4 text-indigo-400" />
+                  <h4 className="font-bold text-white text-xs">
+                    Officiële GitHub Release Pipeline (.github/workflows/release.yml)
+                  </h4>
+                </div>
+                <span className="text-[10px] bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded border border-indigo-700 font-mono">
+                  Trigger: Git Tag (v*)
+                </span>
+              </div>
+              <p className="text-slate-300 text-[11px] leading-relaxed">
+                Wanneer u een git-versietag aanmaakt en pusht, bouwt deze pipeline parallel alle 3 de besturingssystemen, berekent cryptografische <strong className="text-emerald-400">SHA256SUMS.txt</strong> hashes en publiceert direct een officiële GitHub Release met changelog en alle downloadbare installers.
+              </p>
+              <div className="space-y-1">
+                <span className="text-[11px] font-semibold text-slate-300">Start een release via uw lokale git terminal:</span>
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 font-mono text-emerald-400 flex items-center justify-between text-[11px]">
+                  <code>git tag v0.1.0 &amp;&amp; git push origin v0.1.0</code>
+                  <button
+                    onClick={() => copyToClipboard('git tag v0.1.0 && git push origin v0.1.0', 'copy-git-tag')}
+                    className="text-slate-400 hover:text-white p-1 rounded"
+                    title="Kopieer release commando"
+                  >
+                    {copiedCmd === 'copy-git-tag' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>

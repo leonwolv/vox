@@ -1,6 +1,6 @@
 {
-  "summary": "Geüpdatet implementatieplan voor het zwevende dock: de stemkeuze is gesplitst in 2 opeenvolgende dropdowns (1 voor de taal en 1 voor de stemmen binnen die taal) om lange scrollijsten te voorkomen. Daarnaast bevat het dock snelheidsregeling met +/- steppers en popover slider, plus de STT microfoonknop voor Whisper AI.",
-  "updatedAt": "2026-10-12T20:19:18.198200655Z",
+  "summary": "Implementation plan for creating an automated multi-platform GitHub Release pipeline (triggered on git tags like v*) and a professional open-source README.md in English for VoxA11y Desktop.",
+  "updatedAt": "2026-11-05T19:55:33.813012882Z",
   "requestFeedback": true,
   "userFacing": true
 }
